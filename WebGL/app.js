@@ -20,6 +20,9 @@ var Point = (function () {
         if (x !== undefined)
             this.y = y;
     }
+    Point.prototype.distance = function (point) {
+        return Math.sqrt(Math.pow((this.x - point.x), 2) + Math.pow(this.y - point.y, 2));
+    };
     return Point;
 })();
 var Color = (function () {
@@ -74,16 +77,18 @@ var Rectangle = (function (_super) {
     function Rectangle(x, y, width, height, color) {
         _super.call(this, color);
         this.type = 4 /* TRIANGLES */;
-        this.x = x;
-        this.y = y;
+
+        //this.x = x;
+        //this.y = y;
+        this.position = new Point(x, y);
         this.width = width;
         this.height = height;
     }
     Rectangle.prototype.getVertex = function () {
-        var x1 = this.x;
-        var x2 = this.x + this.width;
-        var y1 = this.y;
-        var y2 = this.y + this.height;
+        var x1 = this.position.x;
+        var x2 = this.position.x + this.width;
+        var y1 = this.position.y;
+        var y2 = this.position.y + this.height;
         return new Float32Array([
             x1, y1,
             x2, y1,
@@ -111,9 +116,10 @@ var Triangle = (function (_super) {
     return Triangle;
 })(Polygon);
 var Circle = (function () {
-    function Circle(cx, cy, r, color) {
-        this.cx = cx;
-        this.cy = cy;
+    function Circle(center, r, color) {
+        //this.cx = cx;
+        //this.cy = cy;
+        this.center = center;
         this.r = r;
         if (color !== undefined)
             this.color = color;
@@ -121,12 +127,12 @@ var Circle = (function () {
     Circle.prototype.getVertex = function () {
         var res = new Array();
         for (var i = 0; i < 360; i++) {
-            var x = (Math.cos(i) * this.r) + this.cx;
-            var y = (Math.sin(i) * this.r) + this.cy;
-            res.push(this.cx);
-            res.push(this.cy);
+            var x = (Math.cos(i) * this.r) + this.center.x;
+            var y = (Math.sin(i) * this.r) + this.center.y;
+            res.push(this.center.x);
+            res.push(this.center.y);
             res.push(x);
-            res.push(this.cy);
+            res.push(this.center.y);
             res.push(x);
             res.push(y);
         }
@@ -144,6 +150,9 @@ var Circle = (function () {
         gl.bufferData(gl.ARRAY_BUFFER, vertex, gl.STATIC_DRAW);
         gl.uniform4f(colorLocation, this.color.red, this.color.green, this.color.blue, this.color.alpha);
         gl.drawArrays(5 /* TRIANGLE_STRIP */, 0, vertex.length / 2);
+    };
+    Circle.prototype.Intersect = function (circle) {
+        return this.r + circle.r > this.center.distance(circle.center);
     };
     return Circle;
 })();
@@ -173,12 +182,22 @@ var WebGLContext = (function () {
         // Establecer la resolucion
         var resolutionLocation = this.gl.getUniformLocation(this.program, 'u_resolution');
         this.gl.uniform2f(resolutionLocation, this.canvas.width, this.canvas.height);
-
-        this.drawMario();
+        this.clear();
+        //this.drawMario();
     };
-    WebGLContext.prototype.drawRectangles = function () {
-        var triangle = new Triangle(new Point(10, 10), new Point(10, 100), new Point(100, 100), new Color(1));
-        triangle.draw(this.gl, this.program);
+    WebGLContext.prototype.clear = function (color) {
+        var col = new Color();
+        if (color !== undefined)
+            col = color;
+        this.gl.clearColor(col.red, col.green, col.blue, col.alpha);
+        this.gl.enable(this.gl.DEPTH_TEST);
+        this.gl.depthFunc(this.gl.LEQUAL);
+        this.gl.clear(this.gl.COLOR_BUFFER_BIT | this.gl.DEPTH_BUFFER_BIT);
+        //var rect = new Rectangle(0, 0, this.canvas.width, this.canvas.height, col);
+        //rect.draw(this.gl, this.program);
+    };
+    WebGLContext.prototype.drawShape = function (shape) {
+        shape.draw(this.gl, this.program);
     };
     WebGLContext.prototype.drawMario = function () {
         var pixelwidth = 23;
@@ -299,8 +318,50 @@ var WebGLContext = (function () {
     };
     return WebGLContext;
 })();
+var Main = (function () {
+    function Main(canvas) {
+        this.webgl = new WebGLContext(canvas);
 
+        //this.webgl.drawMario();
+        this.circle1 = new Circle(new Point(100, 100), 50, new Color(1, 0, 0, 0.5));
+        this.circle2 = new Circle(new Point(200, 200), 70, new Color(0, 1, 0, 0.5));
+        this.init();
+        this.draw();
+    }
+    Main.prototype.init = function () {
+        var _this = this;
+        window.addEventListener('keypress', function (e) {
+            var speed = 10;
+            if (e.keyCode == 119) {
+                // Arriba
+                _this.circle1.center.y -= speed;
+            }
+            if (e.keyCode == 115) {
+                // Abajo
+                _this.circle1.center.y += speed;
+            }
+            if (e.keyCode == 97) {
+                // Izquierda
+                _this.circle1.center.x -= speed;
+            }
+            if (e.keyCode == 100) {
+                // Derecha
+                _this.circle1.center.x += speed;
+            }
+            if (_this.circle1.Intersect(_this.circle2)) {
+                console.log('Intersect');
+            }
+            _this.webgl.clear();
+            _this.draw();
+        }, false);
+    };
+    Main.prototype.draw = function () {
+        this.webgl.drawShape(this.circle1);
+        this.webgl.drawShape(this.circle2);
+    };
+    return Main;
+})();
 window.onload = function () {
-    var webgl = new WebGLContext(document.getElementById('canvas'));
+    var main = new Main(document.getElementById('canvas'));
 };
 //# sourceMappingURL=app.js.map
