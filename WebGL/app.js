@@ -21,7 +21,8 @@ var Point = (function () {
             this.y = y;
     }
     Point.prototype.distance = function (point) {
-        return Math.sqrt(Math.pow((this.x - point.x), 2) + Math.pow(this.y - point.y, 2));
+        //return Math.sqrt(Math.pow((this.x - point.x), 2) + Math.pow(this.y - point.y, 2));
+        return Math.pow((this.x - point.x), 2) + Math.pow(this.y - point.y, 2);
     };
     return Point;
 })();
@@ -117,8 +118,6 @@ var Triangle = (function (_super) {
 })(Polygon);
 var Circle = (function () {
     function Circle(center, r, color) {
-        //this.cx = cx;
-        //this.cy = cy;
         this.center = center;
         this.r = r;
         if (color !== undefined)
@@ -129,10 +128,11 @@ var Circle = (function () {
         for (var i = 0; i < 360; i++) {
             var x = (Math.cos(i) * this.r) + this.center.x;
             var y = (Math.sin(i) * this.r) + this.center.y;
-            res.push(this.center.x);
-            res.push(this.center.y);
-            res.push(x);
-            res.push(this.center.y);
+
+            //res.push(this.center.x);
+            //res.push(this.center.y);
+            //res.push(x);
+            //res.push(this.center.y);
             res.push(x);
             res.push(y);
         }
@@ -149,22 +149,46 @@ var Circle = (function () {
         var vertex = this.getVertex();
         gl.bufferData(gl.ARRAY_BUFFER, vertex, gl.STATIC_DRAW);
         gl.uniform4f(colorLocation, this.color.red, this.color.green, this.color.blue, this.color.alpha);
-        gl.drawArrays(5 /* TRIANGLE_STRIP */, 0, vertex.length / 2);
+
+        //gl.drawArrays(Types.TRIANGLE_STRIP, 0, vertex.length / 2);
+        gl.drawArrays(gl.LINE_STRIP, 0, vertex.length / 2);
     };
     Circle.prototype.Intersect = function (circle) {
-        return this.r + circle.r > this.center.distance(circle.center);
+        //return this.r + circle.r > this.center.distance(circle.center);
+        return Math.pow(this.r + circle.r, 2) > this.center.distance(circle.center);
     };
     return Circle;
 })();
-var Texture = (function () {
-    function Texture(src) {
-        this.image = new Image();
-        this.image.src = src;
+var Line = (function () {
+    function Line(a, b, color) {
+        this.color = new Color();
+        this.a = a;
+        this.b = b;
+        if (color !== undefined)
+            this.color = color;
     }
-    Texture.prototype.draw = function (gl, program) {
+    Line.prototype.getVertex = function () {
+        return new Float32Array([
+            this.a.x, this.a.y,
+            this.b.x, this.b.y
+        ]);
     };
-    return Texture;
+    Line.prototype.draw = function (gl, program) {
+        var positionLocation = gl.getAttribLocation(program, 'a_position');
+        var colorLocation = gl.getUniformLocation(program, 'u_color');
+        var buffer = gl.createBuffer();
+        gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
+        gl.enableVertexAttribArray(positionLocation);
+        gl.vertexAttribPointer(positionLocation, 2, gl.FLOAT, false, 0, 0);
+
+        var vertex = this.getVertex();
+        gl.bufferData(gl.ARRAY_BUFFER, vertex, gl.STATIC_DRAW);
+        gl.uniform4f(colorLocation, this.color.red, this.color.green, this.color.blue, this.color.alpha);
+        gl.drawArrays(gl.LINE_STRIP, 0, vertex.length / 2);
+    };
+    return Line;
 })();
+
 var WebGLContext = (function () {
     function WebGLContext(canvas) {
         this.canvas = canvas;
@@ -321,7 +345,10 @@ var WebGLContext = (function () {
 var Main = (function () {
     function Main(canvas) {
         this.webgl = new WebGLContext(canvas);
+        this.mensaje = document.getElementById('mensaje');
 
+        //var line = new Line(new Point(10, 10), new Point(100, 100), new Color(1));
+        //this.webgl.drawShape(line);
         //this.webgl.drawMario();
         this.circle1 = new Circle(new Point(100, 100), 50, new Color(1, 0, 0, 0.5));
         this.circle2 = new Circle(new Point(200, 200), 70, new Color(0, 1, 0, 0.5));
@@ -349,7 +376,9 @@ var Main = (function () {
                 _this.circle1.center.x += speed;
             }
             if (_this.circle1.Intersect(_this.circle2)) {
-                console.log('Intersect');
+                _this.mensaje.innerHTML = 'colision';
+            } else {
+                _this.mensaje.innerHTML = '';
             }
             _this.webgl.clear();
             _this.draw();

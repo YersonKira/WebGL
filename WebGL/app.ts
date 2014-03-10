@@ -16,7 +16,8 @@ class Point {
         if (x !== undefined) this.y = y;
     }
     distance(point: Point): number {
-        return Math.sqrt(Math.pow((this.x - point.x), 2) + Math.pow(this.y - point.y, 2));
+        //return Math.sqrt(Math.pow((this.x - point.x), 2) + Math.pow(this.y - point.y, 2));
+        return Math.pow((this.x - point.x), 2) + Math.pow(this.y - point.y, 2);
     }
 }
 class Color {
@@ -105,14 +106,10 @@ class Triangle extends Polygon{
     }
 }
 class Circle implements IShape{
-    //cx: number;
-    //cy: number;
     center: Point;
     r: number;
     color: Color;
     constructor(center: Point, r: number, color?: Color) {
-        //this.cx = cx;
-        //this.cy = cy;
         this.center = center;
         this.r = r;
         if (color !== undefined) this.color = color;
@@ -122,10 +119,10 @@ class Circle implements IShape{
         for (var i = 0; i < 360; i++) {
             var x = (Math.cos(i) * this.r) + this.center.x;
             var y = (Math.sin(i) * this.r) + this.center.y;
-            res.push(this.center.x);
-            res.push(this.center.y);
-            res.push(x);
-            res.push(this.center.y);
+            //res.push(this.center.x);
+            //res.push(this.center.y);
+            //res.push(x);
+            //res.push(this.center.y);
             res.push(x);
             res.push(y);
         }
@@ -142,22 +139,44 @@ class Circle implements IShape{
         var vertex = this.getVertex();
         gl.bufferData(gl.ARRAY_BUFFER, vertex, gl.STATIC_DRAW);
         gl.uniform4f(colorLocation, this.color.red, this.color.green, this.color.blue, this.color.alpha);
-        gl.drawArrays(Types.TRIANGLE_STRIP, 0, vertex.length / 2);
+        //gl.drawArrays(Types.TRIANGLE_STRIP, 0, vertex.length / 2);
+        gl.drawArrays(gl.LINE_STRIP, 0, vertex.length / 2);
     }
     Intersect(circle: Circle): boolean {
-        return this.r + circle.r > this.center.distance(circle.center);
+        //return this.r + circle.r > this.center.distance(circle.center);
+        return Math.pow(this.r + circle.r, 2) > this.center.distance(circle.center);
     }
 }
-class Texture {
-    image: HTMLImageElement;
-    constructor(src: string) {
-        this.image = new Image();
-        this.image.src = src;
+class Line implements IShape {
+    a: Point;
+    b: Point;
+    color: Color = new Color();
+    constructor(a: Point, b: Point, color?: Color) {
+        this.a = a;
+        this.b = b;
+        if (color !== undefined) this.color = color;
+    }
+    getVertex(): Float32Array {
+        return new Float32Array([
+            this.a.x, this.a.y,
+            this.b.x, this.b.y
+        ]);
     }
     draw(gl: WebGLRenderingContext, program: WebGLProgram): void {
-        
+        var positionLocation = gl.getAttribLocation(program, 'a_position');
+        var colorLocation = gl.getUniformLocation(program, 'u_color');
+        var buffer = gl.createBuffer();
+        gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
+        gl.enableVertexAttribArray(positionLocation);
+        gl.vertexAttribPointer(positionLocation, 2, gl.FLOAT, false, 0, 0);
+
+        var vertex = this.getVertex();
+        gl.bufferData(gl.ARRAY_BUFFER, vertex, gl.STATIC_DRAW);
+        gl.uniform4f(colorLocation, this.color.red, this.color.green, this.color.blue, this.color.alpha);
+        gl.drawArrays(gl.LINE_STRIP, 0, vertex.length / 2);
     }
 }
+
 class WebGLContext {
     private gl: WebGLRenderingContext;
     private program: WebGLProgram;
@@ -307,8 +326,12 @@ class Main {
     webgl: WebGLContext;
     circle1: Circle;
     circle2: Circle;
+    mensaje: HTMLElement;
     constructor(canvas: HTMLCanvasElement) {
         this.webgl = new WebGLContext(canvas);
+        this.mensaje = document.getElementById('mensaje');
+        //var line = new Line(new Point(10, 10), new Point(100, 100), new Color(1));
+        //this.webgl.drawShape(line);
         //this.webgl.drawMario();
         this.circle1 = new Circle(new Point(100, 100), 50, new Color(1, 0, 0, 0.5));
         this.circle2 = new Circle(new Point(200, 200), 70, new Color(0, 1, 0, 0.5));
@@ -335,7 +358,9 @@ class Main {
                 this.circle1.center.x += speed;
             }
             if (this.circle1.Intersect(this.circle2)) {
-                console.log('Intersect');
+                this.mensaje.innerHTML = 'colision';
+            } else {
+                this.mensaje.innerHTML = '';
             }
             this.webgl.clear();
             this.draw();
